@@ -2,7 +2,7 @@
 just what you need : A web base spreadsheet, support the ~~fucking~~ IE8 and other modern browser, read and output the ~~fucking~~ XLS & XLSX file.<br>
 
 网页版表格控件，操作起来和excel一样酸爽，当然，他可以读取或者写入xls/xlsx文件，甚至，它支持IE8.
-
+![Image](https://raw.githubusercontent.com/dingjibang/DSheet/master/demo.png)
 # Start （开始使用）
 
 1.[download ZIP file.（用你的鼠标点击我来下载组件）](https://github.com/dingjibang/DSheet/archive/master.zip)
