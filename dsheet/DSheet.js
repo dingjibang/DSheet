@@ -217,7 +217,7 @@ function _to_sheet(_dom,_param){
 			});
 		}
 		$.each(that.selection.dom,function(idx,dom){
-			dom.undobind = undefined;
+			dom.todo = undefined;
 		});
 		that.selection.dom = new Array();
 		$(".sheet_select").removeClass("sheet_select");
@@ -332,7 +332,7 @@ function _to_sheet(_dom,_param){
 				dom.find("pre").text(dom.attr("formula"));
 			}
 			
-			text.unbind("input propertychange").val(dom.text()).on('input propertychange',function(){
+			text.focus().unbind("input propertychange").val(dom.text()).attr("unmodify",dom.text()).on('input propertychange',function(){
 				if(typeof(window.event) != "undefined" && typeof(window.event.propertyName) != "undefined" && window.event.propertyName != "value")
 					return;
 				if($(this).attr("b") != null)
@@ -362,16 +362,16 @@ function _to_sheet(_dom,_param){
 							}
 						});
 						
-						dom.undobind = todo(arr);
+						dom.todo = todo(arr);
 						arr.redo();
 					}else{
-						if(typeof(dom.undobind) != "undefined"){
-							dom.undobind.text = $(this).val(); 
-							dom.undobind.redo();
+						if(typeof(dom.todo) != "undefined"){
+							dom.todo.text = $(this).val(); 
+							dom.todo.redo();
 						}
 					}
 				}
-			}).focus().focus().attr("unmodify",dom.text());
+			});
 			
 		}
 		
@@ -436,12 +436,12 @@ function _to_sheet(_dom,_param){
 								text.attr("c","c").val(arr.text);
 							}
 						};
-						cell.undobind = todo(arr);
+						cell.todo = todo(arr);
 						arr.redo();
 					}else{
-						if(typeof(cell.undobind) != "undefined"){
-							cell.undobind.text = text.val();
-							cell.undobind.text.redo();
+						if(typeof(cell.todo) != "undefined"){
+							cell.todo.text = text.val();
+							cell.todo.text.redo();
 						}
 					}
 				})
@@ -458,6 +458,22 @@ function _to_sheet(_dom,_param){
 					_offy = e.pageY;
 					_drag = cell;
 					mask.show();
+					var mtodo = {
+						osize:cell.height(),
+						size:cell.height(),
+						drag:_drag,
+						undo:function(){
+							that.table.find("td[row='"+mtodo.drag.attr("row")+"']").first().height(mtodo.osize);
+							mtodo.drag.height(mtodo.osize);
+							mtodo.drag.find("div").css("bottom","initial").css("top",(mtodo.drag.height()-mtodo.drag.find("div").height())/(ie8?2:1)+(ie8?10:0));//what the fuck
+						},
+						redo:function(){
+							that.table.find("td[row='"+mtodo.drag.attr("row")+"']").first().height(mtodo.size);
+							mtodo.drag.height(mtodo.size);
+							mtodo.drag.find("div").css("bottom","initial").css("top",(mtodo.drag.height()-mtodo.drag.find("div").height())/(ie8?2:1)+(ie8?10:4));//what the fuck
+						}
+					};
+					mask.todo = todo(mtodo);
 					return false;
 				});
 			}else{
@@ -465,6 +481,20 @@ function _to_sheet(_dom,_param){
 					_offx = e.pageX;
 					_drag = cell;
 					mask.show();
+					var mtodo = {
+						osize:cell.width(),
+						size:cell.width(),
+						drag:_drag,
+						undo:function(){
+							mtodo.drag.width(mtodo.osize);
+							that.table.find(".fixHead td").eq(parseInt(mtodo.drag.attr("col"))).width(mtodo.osize);
+						},
+						redo:function(){
+							mtodo.drag.width(mtodo.size);
+							that.table.find(".fixHead td").eq(parseInt(mtodo.drag.attr("col"))).width(mtodo.size);
+						}
+					};
+					mask.todo = todo(mtodo);
 					return false;
 				});
 			}
@@ -794,20 +824,20 @@ function _to_sheet(_dom,_param){
 		if(_drag.attr("row") == "0"){
 			var width = _drag.width() + e.pageX - _offx;
 			width = width <= 0 ? 1 : width;
-			_drag.width(width);
-			that.table.find(".fixHead td").eq(parseInt(_drag.attr("col"))).width(width);
+			mask.todo.size = width;
+			mask.todo.redo();
 			_offx = e.pageX;
 		}else{
 			var height = _drag.height() + e.pageY - _offy;
 			height = height <=0 ? 1 : height;
-			_drag.height(height);
-			that.table.find("td[row='"+_drag.attr("row")+"']").parent().height(height+5);
+			mask.todo.size = height;
+			mask.todo.redo();
 			_offy = e.pageY;
-			_drag.find("div").css("bottom","initial").css("top",(_drag.height()-_drag.find("div").height())/(ie8?2:1)+(ie8?7:0));//what the fuck
 		}
 		return false;
 	}).mouseup(function(){
 		$(this).hide();
+		mask.todo = undefined;
 		_drag = null;
 	});
 	
@@ -966,7 +996,7 @@ var DSheet = {
 		</tr>\
 		<tr>\
 		<td class="">\
-		<div class="sheet_content" onselectstart="if ((event.target || event.srcElement).nodeName !== \'INPUT\') return false;">\
+		<div class="sheet_content disable_select" onselectstart="if ((event.target || event.srcElement).nodeName !== \'INPUT\') return false;">\
 		<table class="sheet_head"></table>\
 		<table class="sheet_left"></table>\
 		<table class="sheet_table">\
