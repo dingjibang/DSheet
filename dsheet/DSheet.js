@@ -4,12 +4,19 @@
  */
 
 function _to_sheet(_dom,_param){
-	
 	this.dom = $(DSheet.tmpl()).appendTo($(_dom));
 	this.content = this.dom.find(".sheet_content");
 	var posText = this.dom.find(".sheet_pos");
+	var that = this;
 	var param = _param;
+	//生成默认参数
+	if(typeof(param) == "undefined") param = new Object();
+	if(typeof(param.row) == "undefined") param.row = window.screen.width / 85 + 5;
+	if(typeof(param.col) == "undefined") param.col = window.screen.height / 25 + 5;
+	if(typeof(param.readonly) == "undefined") param.readonly = false; 
+	
 	var text = this.dom.find(".sheet_text");
+	if(param.readonly) text.attr("readonly","readonly");
 	
 	var ie8 = (navigator.appName=="Microsoft Internet Explorer" && navigator.appVersion.split(";")[1].replace(/[ ]/g,"")=="MSIE8.0");
 	
@@ -24,24 +31,28 @@ function _to_sheet(_dom,_param){
 	});
 	
 	var blOption = this.dom.find(".sheet_border_left").click(function(){
+		if(param.readonly) return;
 		var checked = $(this).prop("checked");
 		$(".sheet_select").each(function(){
 			_border($(this),"sheet_content_border_left",checked);
 		});
 	});
 	var brOption = this.dom.find(".sheet_border_right").click(function(){
+		if(param.readonly) return;
 		var checked = $(this).prop("checked");
 		$(".sheet_select").each(function(){
 			_border($(this),"sheet_content_border_right",checked);
 		});
 	});
 	var btOption = this.dom.find(".sheet_border_top").click(function(){
+		if(param.readonly) return;
 		var checked = $(this).prop("checked");
 		$(".sheet_select").each(function(){
 			_border($(this),"sheet_content_border_top",checked);
 		});
 	});
 	var bbOption = this.dom.find(".sheet_border_bottom").click(function(){
+		if(param.readonly) return;
 		var checked = $(this).prop("checked");
 		$(".sheet_select").each(function(){
 			_border($(this),"sheet_content_border_bottom",checked);
@@ -49,6 +60,7 @@ function _to_sheet(_dom,_param){
 	});
 	
 	var fx = this.dom.find(".sheet_fx").click(function(){
+		if(param.readonly) return;
 		if(that.selection.dom.length == 1){
 			var flag = $(this).hasClass("select");
 			var dom = that.selection.dom[0];
@@ -59,22 +71,28 @@ function _to_sheet(_dom,_param){
 	});
 	
 	var alignLeft = this.dom.find(".sheet_align_left").click(function(){
+		if(param.readonly) return;
 		$(".sheet_select").removeClass("sheet_content_align_right").removeClass("sheet_content_align_center").addClass("sheet_content_align_left");
 	});
 	var alignCenter = this.dom.find(".sheet_align_center").click(function(){
+		if(param.readonly) return;
 		$(".sheet_select").removeClass("sheet_content_align_right").removeClass("sheet_content_align_left").addClass("sheet_content_align_center");
 	});
 	var alignRight = this.dom.find(".sheet_align_right").click(function(){
+		if(param.readonly) return;
 		$(".sheet_select").removeClass("sheet_content_align_left").removeClass("sheet_content_align_center").addClass("sheet_content_align_right");
 	});
 	
 	var valignTop = this.dom.find(".sheet_valign_top").click(function(){
+		if(param.readonly) return;
 		$(".sheet_select").removeClass("sheet_content_valign_bottom").removeClass("sheet_content_valign_center").addClass("sheet_content_valign_top");
 	});
 	var valignCenter = this.dom.find(".sheet_valign_center").click(function(){
+		if(param.readonly) return;
 		$(".sheet_select").removeClass("sheet_content_valign_top").removeClass("sheet_content_valign_bottom").addClass("sheet_content_valign_center");
 	});
 	var valignBottom = this.dom.find(".sheet_valign_bottom").click(function(){
+		if(param.readonly) return;
 		$(".sheet_select").removeClass("sheet_content_valign_top").removeClass("sheet_content_valign_center").addClass("sheet_content_valign_bottom");
 	});
 	
@@ -112,15 +130,9 @@ function _to_sheet(_dom,_param){
 		return false;
 	};
 	
-	var that = this;
-	
-	//生成默认参数
-	if(typeof(param) == "undefined") param = new Object();
-	if(typeof(param.row) == "undefined") param.row = window.screen.width / 85 + 5;
-	if(typeof(param.col) == "undefined") param.col = window.screen.height / 25 + 5; 
-	
 	//删除样式
 	this.dom.find(".sheet_clear_style").click(function(){
+		if(param.readonly) return;
 		$(".sheet_select").removeClass("sheet_content_italic").removeClass("sheet_content_bold").removeClass("sheet_content_underline")
 			.removeClass("sheet_content_align_left").removeClass("sheet_content_align_center").removeClass("sheet_content_align_right")
 			.removeClass("sheet_content_valign_top").removeClass("sheet_content_valign_center").removeClass("sheet_content_valign_bottom")
@@ -141,7 +153,8 @@ function _to_sheet(_dom,_param){
 			['a5a5a5','262626','494429','17365d','366092','953734','76923c','5f497a','31859b','e36c09'],
 			['7f7f7f','0c0c0c','1d1b10','0f243e','244061','632423','4f6128','3f3151','205867','974806'],
 			['c00000','ff0000','ffc000','ffff00','92d050','00b050','00b0f0','0070c0','002060','7030a0']
-		]
+		],
+		disabled:param.readonly,
 	}).change(function(){
 		var css = $(this).attr("for") == "bg" ? 'background-color' : 'color';
 		var color = $(this).val();
@@ -152,6 +165,48 @@ function _to_sheet(_dom,_param){
 		$(this).next().find(".sheet_color_view").css("background-color",$(this).val());
 	});
 	
+	//撤销、重做
+	
+	var doarr = [];
+	this.doarr = doarr;//TODO debug
+	var dopoint = 0;
+	this.test = function(){
+		console.log(doarr);
+		console.log(dopoint);
+	};
+	
+	this.dom.find(".sheet_undo").click(function(){
+		if(param.readonly) return;
+		that.undo();
+	});
+	
+	this.dom.find(".sheet_redo").click(function(){
+		if(param.readonly) return;
+		that.redo();
+	});
+	
+	this.undo = function(){
+		if(dopoint > 0){
+			doarr[--dopoint].undo();
+		}
+		return false;
+	};
+	
+	this.redo = function(){
+		if(dopoint < doarr.length){
+			doarr[dopoint++].redo();
+		}
+		return false;
+	};
+	
+	var todo = function(arr){
+		if(doarr.length != dopoint)
+			doarr.splice(dopoint);
+		doarr.push(arr);
+		dopoint = doarr.length;
+		return arr;
+	};
+	
 	//选区
 	this.selection = {};
 	this.selection.dom = new Array(); 
@@ -161,11 +216,14 @@ function _to_sheet(_dom,_param){
 				_calc($(this));
 			});
 		}
-		
+		$.each(that.selection.dom,function(idx,dom){
+			dom.undobind = undefined;
+		});
 		that.selection.dom = new Array();
 		$(".sheet_select").removeClass("sheet_select");
 		$(".sheet_head_select").removeClass("sheet_head_select");
 		text.unbind("input propertychange").val("");
+		text.attr("modify",null).attr("unmodify",null);
 		return that.selection;
 	};
 	
@@ -260,7 +318,6 @@ function _to_sheet(_dom,_param){
 						c = bg ? "#ffffff" : "#000000";
 				}
 			});
-			
 			$(this).spectrum("set",c);
 			$(this).next().find(".sheet_color_view").css("background-color",c);
 		});
@@ -275,17 +332,46 @@ function _to_sheet(_dom,_param){
 				dom.find("pre").text(dom.attr("formula"));
 			}
 			
-			text.val(dom.text()).on('input propertychange',function(){
+			text.unbind("input propertychange").val(dom.text()).on('input propertychange',function(){
 				if(typeof(window.event) != "undefined" && typeof(window.event.propertyName) != "undefined" && window.event.propertyName != "value")
+					return;
+				if($(this).attr("b") != null)
 					return;
 				if($(this).attr("c") != null){
 					$(this).attr("c",null);
 				}else{
-					dom.find("pre").text($(this).val()).find("input").val($(this).val());
-					if(dom.attr("type") == "formula")
-						dom.attr("formula",dom.text());
+					if($(this).attr("modify") == null){
+						$(this).attr("modify",$(this).attr("unmodify"));
+						var __text = $(this).val();
+						var modify = $(this).attr("modify");
+						
+						var arr = ({
+							modify:modify,
+							text:__text,
+							undo:function(){
+								dom.find("pre").text(arr.modify).find("input").val(arr.modify);
+								if(dom.attr("type") == "formula")
+									dom.attr("formula",dom.text());
+								text.attr("b","b").val(arr.modify).attr("b",null);
+							},
+							redo:function(){ 
+								dom.find("pre").text(arr.text).find("input").val(arr.text);
+								if(dom.attr("type") == "formula")
+									dom.attr("formula",dom.text());
+								text.attr("b","b").val(arr.text).attr("b",null);
+							}
+						});
+						
+						dom.undobind = todo(arr);
+						arr.redo();
+					}else{
+						if(typeof(dom.undobind) != "undefined"){
+							dom.undobind.text = $(this).val(); 
+							dom.undobind.redo();
+						}
+					}
 				}
-			}).focus().focus();
+			}).focus().focus().attr("unmodify",dom.text());
 			
 		}
 		
@@ -313,10 +399,12 @@ function _to_sheet(_dom,_param){
 		});
 		if(cell.attr("head") == null){
 			cell.dblclick(function(){
+				if(param.readonly)
+					return;
 				if($(this).find("input").length != 0 || $(this).attr("type") == "formula")
 					return;
 				var _text = $(this).text();
-				$(this).find("pre").html("");
+				$(this).find("pre").html("").hide();
 				
 				$("<input type='text' class='editbox'/>").appendTo($(this)).val(_text)
 				.css("color",cell.hexColor('color')).css("font-size",cell.css("font-size")).css("font-family",cell.css("font-family"))
@@ -325,13 +413,43 @@ function _to_sheet(_dom,_param){
 					if(typeof(window.event) != "undefined" && typeof(window.event.propertyName) != "undefined" && window.event.propertyName != "value")
 						return;
 					text.val($(this).val()).attr("c","c");
+					if($(this).attr("c") != null){
+						$(this).attr("c",null);
+						return;
+					}
+					var _text = $(this).val();
+					var modify = text.attr("unmodify");
+					if(text.attr("modify") == null){
+						var arr = {
+							modify:modify,
+							text:_text,
+							undo:function(){
+								cell.find("pre").text(arr.modify).parent().find("input").attr("c","c").val(arr.modify);
+								if(cell.attr("type") == "formula")
+									cell.attr("formula",arr.modify);
+								text.attr("c","c").val(arr.modify);
+							},
+							redo:function(){ 
+								cell.find("pre").text(arr.text).parent().find("input").attr("c","c").val(arr.text);
+								if(cell.attr("type") == "formula")
+									cell.attr("formula",arr.text);
+								text.attr("c","c").val(arr.text);
+							}
+						};
+						cell.undobind = todo(arr);
+						arr.redo();
+					}else{
+						if(typeof(cell.undobind) != "undefined"){
+							cell.undobind.text = text.val();
+							cell.undobind.text.redo();
+						}
+					}
 				})
 				.blur(function(){
-					cell.find("pre").text($(this).val());
+					cell.find("pre").text($(this).val()).show();
 					$(this).remove();
 				});
 				text.attr("c","c");
-				
 			});
 			$("<pre></pre>").appendTo(cell);
 		}else{
@@ -505,6 +623,7 @@ function _to_sheet(_dom,_param){
 	};
 	
 	removeDom.click(function(){
+		if(param.readonly) return;
 		$.each(that.selection.dom,function(idx,dom){
 			dom.text("");
 		});
@@ -512,6 +631,7 @@ function _to_sheet(_dom,_param){
 	
 	//合并单元格
 	mergeButton.click(function(){
+		if(param.readonly) return;
 		var arr = that.selection.dom;
 		if(arr.length == 0)
 			return;
@@ -726,9 +846,12 @@ function _to_sheet(_dom,_param){
 		shift = e.shiftKey;
 		if($(".editbox").length != 0)
 			return true;
-		if(e.ctrlKey && e.keyCode == 65){
+		if(e.ctrlKey && e.keyCode == 65) //ctrl+A
 			return that.selectAll();
-		}
+		if(e.ctrlKey && e.keyCode == 90) //ctrl+Z
+			return that.undo();
+		if(e.ctrlKey && e.keyCode == 89) //ctrl+Y
+			return that.redo();
 		return true;
 	}).keyup(function(e){
 		ctrl = e.ctrlKey;
@@ -745,6 +868,7 @@ function _to_sheet(_dom,_param){
 		var that = $(this);
 		var img = $("<img src='"+bg+"'>").insertBefore($(this).parent());
 		img.click(function(){
+			if(param.readonly) return;
 			that.prop("checked",$(this).toggleClass("select").hasClass("select")).change();
 		});
 		$(this).change(function(){
@@ -814,6 +938,9 @@ var DSheet = {
 		<li><label><input type="checkbox" class="sheet_bold" bg="<%=path%>/image/b.png"/>粗体</label></li>\
 		<li><label><input type="checkbox" class="sheet_italic" bg="<%=path%>/image/i.png"/>斜体</label></li>\
 		<li><label><input type="checkbox" class="sheet_underline" bg="<%=path%>/image/u.png"/>下划线</label></li>\
+		<li class="split"></li>\
+		<li><img src="<%=path%>/image/undo.png" class="sheet_undo" title="撤销"/></li>\
+		<li><img src="<%=path%>/image/redo.png" class="sheet_redo" title="重做"/></li>\
 		<li class="split"></li>\
 		<li><img src="<%=path%>/image/al.png" class="sheet_align_left" title="水平左对齐"/></li>\
 		<li><img src="<%=path%>/image/ac.png" class="sheet_align_center" title="水平居中对齐"/></li>\
