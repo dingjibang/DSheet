@@ -20,15 +20,37 @@ function _to_sheet(_dom,_param){
 	
 	var ie8 = (navigator.appName=="Microsoft Internet Explorer" && navigator.appVersion.split(";")[1].replace(/[ ]/g,"")=="MSIE8.0");
 	
+	var clzTodo = function(selector,clz,recdom){
+		var obj = {
+			selector:selector,
+			clz:clz,
+			flag:recdom.prop("checked"),
+			redo:function(){
+				obj.selector.toggleClass(obj.clz,obj.flag);
+			},
+			undo:function(){
+				obj.selector.toggleClass(obj.clz,!obj.flag);
+			}
+		};
+		obj.redo();
+		todo(obj);
+		return obj;
+	};
+	
+	var clz3Todo = function(){
+		
+	};
+	
 	var bOption = this.dom.find(".sheet_bold").change(function(){
-		$(".sheet_select").toggleClass("sheet_content_bold",$(this).prop("checked"));
+		clzTodo($(".sheet_select"),"sheet_content_bold",$(this));
 	});
 	var iOption = this.dom.find(".sheet_italic").change(function(){
-		$(".sheet_select").toggleClass("sheet_content_italic",$(this).prop("checked"));
+		clzTodo($(".sheet_select"),"sheet_content_italic",$(this));
 	});
 	var uOption = this.dom.find(".sheet_underline").change(function(){
-		$(".sheet_select").toggleClass("sheet_content_underline",$(this).prop("checked"));
+		clzTodo($(".sheet_select"),"sheet_content_underline",$(this));
 	});
+
 	
 	var blOption = this.dom.find(".sheet_border_left").click(function(){
 		if(param.readonly) return;
