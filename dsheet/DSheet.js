@@ -18,6 +18,8 @@ function _to_sheet(_dom,_param){
 	if(typeof(param.funcable) == "undefined") param.funcable = true;
 	if(typeof(param.autofunc) == "undefined") param.autofunc = true;
 	if(typeof(param.scrollLock) == "undefined") param.scrollLock = false;
+	if(typeof(param.sizeEditor) == "undefined") param.sizeEditor = false;
+	if(typeof(param.unfold) == "undefined") param.unfold = "none";
 	
 	var text = this.dom.find(".sheet_text");
 	if(param.readonly) text.attr("readonly","readonly");
@@ -41,16 +43,33 @@ function _to_sheet(_dom,_param){
 		return obj;
 	};
 	
-	var fontsize = this.dom.find(".sheet_font_size").change(function(){
-		var _that = $(this);
-		if(!isNaN(_that.val()))
+	var _reginput = function(selector,func){
+		return selector.change(func).on('input propertychange',function(){
+			if(typeof(window.event) != "undefined" && typeof(window.event.propertyName) != "undefined" && window.event.propertyName != "value")
+				return;
+			$(this).change();
+		});
+	};
+	
+	var fontsize = _reginput(this.dom.find(".sheet_font_size"),function(){
+		if(!isNaN(fontsize.val()))
 			$.each(that.selection.dom,function(idx,_dom){
-				_dom.css("font-size",_that.val()+"px");
+				_dom.css("font-size",fontsize.val()+"px");
 			});
-	}).on('input propertychange',function(){
-		if(typeof(window.event) != "undefined" && typeof(window.event.propertyName) != "undefined" && window.event.propertyName != "value")
-			return;
-		$(this).change();
+	});
+	
+	var cellWidth = _reginput(this.dom.find(".sizebox input").first(),function(){
+		if($(this).attr("c") != null){$(this).attr("c",null);return;}
+		$.each(that.selection.dom,function(idx,_dom){
+			that.col(_dom).trigger("dblclick",cellWidth.val());
+		});
+	});
+	
+	var cellHeight = _reginput(this.dom.find(".sizebox input").last(),function(){
+		if($(this).attr("c") != null){$(this).attr("c",null);return;}
+		$.each(that.selection.dom,function(idx,_dom){
+			that.row(_dom).trigger("dblclick",cellHeight.val());
+		});
 	});
 	
 	var font = this.dom.find(".sheet_font").change(function(){
@@ -140,7 +159,12 @@ function _to_sheet(_dom,_param){
 	
 	var color = this.dom.find(".sheet_color_selector");
 	
-	var removeDom = this.dom.find(".sheet_remove_dom");
+	var removeDom = this.dom.find(".sheet_remove_dom").click(function(){
+		if(param.readonly) return;
+		$.each(that.selection.dom,function(idx,dom){
+			dom.text("");
+		});
+	});
 	var mergeButton = this.dom.find(".sheet_merge");
 	var mask = this.dom.find(".sheet_drag_mask");
 	
@@ -173,7 +197,7 @@ function _to_sheet(_dom,_param){
 	};
 	
 	//删除样式
-	this.dom.find(".sheet_clear_style").click(function(){
+	var clearStyle = this.dom.find(".sheet_clear_style").click(function(){
 		if(param.readonly) return;
 		$(".sheet_select").removeClass("sheet_content_italic").removeClass("sheet_content_bold").removeClass("sheet_content_underline")
 			.removeClass("sheet_content_align_left").removeClass("sheet_content_align_center").removeClass("sheet_content_align_right")
@@ -182,6 +206,9 @@ function _to_sheet(_dom,_param){
 			.attr("style",null);
 		that.dom.find(".toolbar input[type='checkbox']").prop("checked",false);
 	});
+	
+	this.remove = function(){removeDom.click();};
+	this.clearStyle = function(){clearStyle.click();};
 	
 	color.spectrum({
 		preferredFormat:"rgb",
@@ -335,8 +362,8 @@ function _to_sheet(_dom,_param){
 			if(!dom.hasClass("sheet_content_underline") && dom.text().length != 0)
 				u=false;
 			
-			headTable.find("td[col='"+dom.attr("col")+"'][row='0']").addClass("sheet_head_select");
-			leftTable.find("td[col='0'][row='"+dom.attr("row")+"']").addClass("sheet_head_select");
+			that.col(dom).addClass("sheet_head_select");
+			that.row(dom).addClass("sheet_head_select");
 		});
 		
 		bOption.prop("checked",b).parent().prev().toggleClass("select",b);
@@ -412,6 +439,8 @@ function _to_sheet(_dom,_param){
 			
 			fontsize.val(dom.css("font-size").split("px")[0]);
 			font.val(dom.css("font-family"));
+			cellWidth.attr("c","c").val(that.col(dom).width());
+			cellHeight.attr("c","c").val(that.row(dom).height());
 		}
 		
 		$.each(that.selection.dom,function(idx,dom){
@@ -493,8 +522,10 @@ function _to_sheet(_dom,_param){
 			});
 		}else{
 			var isCol = cell.attr("col") == 0;
-			cell.dblclick(function(){
-				var result = prompt("请输入"+(isCol?"列高":"行宽"),isCol?cell.height():cell.width());
+			cell.dblclick(function(e,val){
+				var result = val;
+				if(typeof(val) == "undefined")
+					result = prompt("请输入"+(isCol?"列高":"行宽"),isCol?cell.height():cell.width());
 				if(result){
 					if(!isCol) cell.width(0); else cell.height(0);
 					cell.find("div").trigger("mousedown",{pageY:cell.height(),pageX:cell.width()});
@@ -552,7 +583,6 @@ function _to_sheet(_dom,_param){
 	}
 	
 	var _border = function(dom,sty,toggle){
-		
 		if(sty == "sheet_content_border_left"){
 			var dom1 = dom.prev();
 			if(dom1.length != 0 && !dom1.hasClass("sheet_content_border_right"))
@@ -580,7 +610,7 @@ function _to_sheet(_dom,_param){
 			return that.table.find("td[col='"+param+"']").not("td[head]");
 		}else if(typeof(param) == "string"){
 			return that.table.find("td[col='"+DSheet.colName(param)+"']").not("td[head]");
-		}else{
+		}else if(typeof(param) == "undefined"){
 			that.table.find("tr").each(function(idx,el){
 				var row = $("<td></td>").appendTo($(this));
 				var ln = $(this).find("td").length;
@@ -591,6 +621,8 @@ function _to_sheet(_dom,_param){
 				reg(row);
 			});
 			return that;
+		}else{
+			return headTable.find("td[col='"+$(param).attr("col")+"']");
 		}
 	}
 	
@@ -599,7 +631,7 @@ function _to_sheet(_dom,_param){
 			return that.table.find("td[row='"+param+"']").not("td[head]");
 		}else if(typeof(param) == "string"){
 			return that.table.find("td[row='"+DSheet.rowName(param)+"']").not("td[head]");
-		}else{
+		}else if(typeof(param) == "undefined"){
 			var cols = that.table.find("tr");
 			var ln = cols.length - 1; 
 			var col = $("<tr></tr>").appendTo(that.table.find("tbody")).height(20);
@@ -609,7 +641,8 @@ function _to_sheet(_dom,_param){
 					reg(row.text(DSheet.rowName(ln + 1)).attr("head","row").attr("col","0").appendTo($("<tr></tr>").appendTo(leftTable).height(20)));
 				reg(row);
 			});
-			
+		}else{
+			return leftTable.find("td[row='"+$(param).attr("row")+"']");
 		}
 	}
 	
@@ -702,13 +735,6 @@ function _to_sheet(_dom,_param){
 		});
 	};
 	
-	removeDom.click(function(){
-		if(param.readonly) return;
-		$.each(that.selection.dom,function(idx,dom){
-			dom.text("");
-		});
-	});
-	
 	//合并单元格
 	mergeButton.click(function(e,dirty){
 		if(param.readonly && !dirty) return;
@@ -733,7 +759,6 @@ function _to_sheet(_dom,_param){
 		}else{
 			$("td[merge='"+merged+"']").show().attr("merge",null);
 		}
-		
 		that.selection.clear();
 	});
 	
@@ -906,6 +931,10 @@ function _to_sheet(_dom,_param){
 		$(this).hide();
 		mask.todo = undefined;
 		_drag = null;
+	}).mousedown(function(){
+		popup.hide();
+		mask.hide();
+		return true;
 	});
 	
 	//注册scroll
@@ -992,7 +1021,11 @@ function _to_sheet(_dom,_param){
 		var that = $(this);
 		var toggle = toolbar.find("."+that.attr("toggle"));
 		toggle.parent().add($(that)).hover(function(){
-			that.show().css("left",toggle.offset().left).css("top",toggle.offset().top+toggle.height());
+			if($(this).attr("c") == null)
+				that.show().css("left",toggle.offset().left).css("top",toggle.offset().top+toggle.height());
+			else 
+				$(this).attr("c",null);
+			$(this).find("input").attr("c",null);
 		},function(){
 			that.hide();
 		});
@@ -1003,13 +1036,13 @@ function _to_sheet(_dom,_param){
 		this.read(param.content);
 	
 	var numC = function(dom,count){
-		if(isNaN(dom.val()))
+		if(isNaN(dom.val()) || dom.val().length == 0)
 			dom.val(0);
-		dom.val(parseInt(dom.val())+count);
+		var result = parseInt(dom.val())+count;
+		dom.val(result < 0 ? 0 : result);
 	};
 	
-	
-	fontsize.each(function(){
+	fontsize.add(cellWidth).add(cellHeight).each(function(){
 		var that = $(this);
 		$("<div class='numsp'><div class='numup'></div><div class='numdown'></div></div>").insertAfter($(this)).children().each(function(idx,dom){
 			$(dom).click(function(){
@@ -1019,7 +1052,44 @@ function _to_sheet(_dom,_param){
 		});
 	});
 	
+	this.dom.find(".sheet_size").parent().toggle(param.sizeEditor);
+	
 	this.selection.clear(false);
+	
+	var popup = this.dom.find(".sheet_popup").hide();
+	this.content.contextmenu(function(e){
+		if(!ctrl){
+			popup.show().css("top",e.clientY).css("left",e.clientX);
+			mask.show(); 
+			return false;
+		}
+		return true;
+	});
+	
+	popup.children().click(function(e){
+		if($(this).hasClass("sheet_popup_selectall"))
+			that.selectAll();
+		if($(this).hasClass("sheet_popup_delete"))
+			that.remove();
+		if($(this).hasClass("sheet_popup_clear"))
+			that.clearStyle();
+		if($(this).hasClass("sheet_popup_height") || $(this).hasClass("sheet_popup_width"))
+			that.dom.find("span[toggle='sheet_size']").show().attr("c","c").css({top:e.clientY-80,left:e.clientX-50});
+		
+		popup.add(mask).hide();
+	});
+	
+	if(param.unfold != "none"){
+		var unfold = param.unfold.split(" ");
+		if(param.unfold == "all") unfold = ["size","align","border"];
+		$.each(unfold,function(idx,obj){
+			var togcls = "sheet_"+obj;
+			var tog = that.dom.find("span[toggle='"+togcls+"']");
+			that.dom.find("img."+togcls).parent().remove();
+			tog.children().insertBefore(tog).css("color","white");
+			tog.remove();
+		});
+	}
 	
 	return this;
 }
@@ -1063,20 +1133,18 @@ var DSheet = {
 		<tr height="20px;">\
 		<td>\
 		<ul class="toolbar">\
-		<li><input type="button" class="sheet_save" value="保存"/></li>\
+		<li><input type="text" class="sheet_pos" title="位置"/></li>\
 		<li class="split"></li>\
-		<li><input type="text" class="sheet_pos"/></li>\
-		<li class="split"></li>\
-		<li><input type="text" class="sheet_text"/></li>\
+		<li><input type="text" class="sheet_text" title="文字"/></li>\
 		<li><img src="<%=path%>/image/fx.png" class="sheet_fx" title="函数模式"/></li>\
 		<li class="split"></li>\
 		<li><label><input type="checkbox" class="sheet_bold" bg="<%=path%>/image/b.png"/>粗体</label></li>\
 		<li><label><input type="checkbox" class="sheet_italic" bg="<%=path%>/image/i.png"/>斜体</label></li>\
 		<li><label><input type="checkbox" class="sheet_underline" bg="<%=path%>/image/u.png"/>下划线</label></li>\
 		<li class="split"></li>\
-		<li><input type="text" class="sheet_font_size"/></li>\
+		<li><input type="text" class="sheet_font_size" title="文字大小"/></li>\
 		<li class="split"></li>\
-		<select class="sheet_font">\
+		<select class="sheet_font" title="字体">\
 		<option value="微软雅黑">微软雅黑</option>\
 		<option value="宋体">宋体</option>\
 		<option value="黑体">黑体</option>\
@@ -1104,6 +1172,8 @@ var DSheet = {
 		<li><img src="<%=path%>/image/br.png" class="sheet_border_right" title="右边框"/></li>\
 		<li><img src="<%=path%>/image/bb.png" class="sheet_border_bottom" title="底边框"/></li>\
 		</span>\
+		<li><img src="<%=path%>/image/size.png" class="sheet_size" title="单元格大小"/></li>\
+		<span toggle="sheet_size"><li class="sizebox">宽度：<input type="text"/>&nbsp;&nbsp;&nbsp;高度：<input type="text"/></li></span>\
 		<li class="split"></li>\
 		<li><img src="<%=path%>/image/cf.png" class="sheet_clear_style" title="删除样式"/></li>\
 		<li><img src="<%=path%>/image/del.png" class="sheet_remove_dom" title="删除"/></li>\
@@ -1128,6 +1198,19 @@ var DSheet = {
 		</table>\
 		</div>\
 		<div class="sheet_drag_mask"></div>\
+		<div class="sheet_popup">\
+		<p class="sheet_popup_cut">剪切</p>\
+		<p class="sheet_popup_copy">复制</p>\
+		<p class="sheet_popup_paste">粘贴</p>\
+		<hr/>\
+		<p class="sheet_popup_delete">删除</p>\
+		<p class="sheet_popup_clear">清除样式</p>\
+		<hr/>\
+		<p class="sheet_popup_selectall">全选</p>\
+		<hr/>\
+		<p class="sheet_popup_height">设置行高</p>\
+		<p class="sheet_popup_width">设置列宽</p>\
+		</div>\
 		</td>\
 		</tr>\
 		</table>\

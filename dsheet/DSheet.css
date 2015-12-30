@@ -18,13 +18,38 @@ html,body{
 	position:relative;
 	vertical-align:middle;
 }
+.toolbar li.sizebox input{
+	width:50px;
+	height:20px;
+}
 .toolbar li.split{
 	background-image:url('image/split.jpg');
-	margin:0px 3px;
+	margin:0px 2px;
 	width:2px;
 	height:24px;
 }
-
+.sheet_popup{
+	position:fixed;
+	left:0;
+	top:0;
+	z-index:99999;
+	width:150px;
+	border:1px solid gray;
+	box-shadow:1px 1px 10px rgba(0,0,0,.3);
+	background-color:white;
+}
+.sheet_popup hr{
+	margin:1px 0;
+}
+.sheet_popup p{
+	margin:0;
+	padding:5px 10px;
+	cursor:pointer;
+}
+.sheet_popup p:hover{
+	background-color:#698DDE;
+	color:white;
+}
 .sheet{
 	width:100%;
 	position: relative;
@@ -136,7 +161,7 @@ html,body{
 	height:26px;
 }
 .sheet_text{
-	width:200px;
+	width:250px;
 }
 .sheet_left_split{
 	cursor:row-resize;
@@ -172,7 +197,7 @@ html,body{
 	height:100%;
 	top:0;
 	left:0;
-	z-index:999999;
+	z-index:99998;
 	display:none;
 }
 .sheet_content_align_left,.sheet_content_align_left input{
