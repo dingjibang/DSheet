@@ -11,9 +11,13 @@ function _to_sheet(_dom,_param){
 	var param = _param;
 	//生成默认参数
 	if(typeof(param) == "undefined") param = new Object();
-	if(typeof(param.row) == "undefined") param.row = window.screen.width / 85 + 5;
+	if(typeof(param.row) == "undefined") param.row = window.screen.width / 85;
 	if(typeof(param.col) == "undefined") param.col = window.screen.height / 25 + 5;
-	if(typeof(param.readonly) == "undefined") param.readonly = false; 
+	if(typeof(param.readonly) == "undefined") param.readonly = false;
+	if(typeof(param.hideToolbar) == "undefined") param.hideToolbar = false;
+	if(typeof(param.funcable) == "undefined") param.funcable = true;
+	if(typeof(param.autofunc) == "undefined") param.autofunc = true;
+	if(typeof(param.scrollLock) == "undefined") param.scrollLock = false;
 	
 	var text = this.dom.find(".sheet_text");
 	if(param.readonly) text.attr("readonly","readonly");
@@ -37,9 +41,24 @@ function _to_sheet(_dom,_param){
 		return obj;
 	};
 	
-	var clz3Todo = function(){
-		
-	};
+	var fontsize = this.dom.find(".sheet_font_size").change(function(){
+		var _that = $(this);
+		if(!isNaN(_that.val()))
+			$.each(that.selection.dom,function(idx,_dom){
+				_dom.css("font-size",_that.val()+"px");
+			});
+	}).on('input propertychange',function(){
+		if(typeof(window.event) != "undefined" && typeof(window.event.propertyName) != "undefined" && window.event.propertyName != "value")
+			return;
+		$(this).change();
+	});
+	
+	var font = this.dom.find(".sheet_font").change(function(){
+		var _that = $(this);
+		$.each(that.selection.dom,function(idx,_dom){
+			_dom.css("font-family",_that.val());
+		});
+	});
 	
 	var bOption = this.dom.find(".sheet_bold").change(function(){
 		clzTodo($(".sheet_select"),"sheet_content_bold",$(this));
@@ -91,6 +110,7 @@ function _to_sheet(_dom,_param){
 		}
 		$(this).toggleClass("select");
 	});
+	if(!param.funcable) fx.hide();
 	
 	var alignLeft = this.dom.find(".sheet_align_left").click(function(){
 		if(param.readonly) return;
@@ -190,12 +210,7 @@ function _to_sheet(_dom,_param){
 	//撤销、重做
 	
 	var doarr = [];
-	this.doarr = doarr;//TODO debug
 	var dopoint = 0;
-	this.test = function(){
-		console.log(doarr);
-		console.log(dopoint);
-	};
 	
 	this.dom.find(".sheet_undo").click(function(){
 		if(param.readonly) return;
@@ -233,7 +248,7 @@ function _to_sheet(_dom,_param){
 	this.selection = {};
 	this.selection.dom = new Array(); 
 	this.selection.clear = function(dirty){
-		if(typeof(dirty) != "undefined" && dirty){
+		if(typeof(dirty) != "undefined" && dirty && param.funcable && param.autofunc){
 			that.table.find("td[formula]").each(function(){
 				_calc($(this));
 			});
@@ -372,13 +387,13 @@ function _to_sheet(_dom,_param){
 							text:__text,
 							undo:function(){
 								dom.find("pre").text(arr.modify).find("input").val(arr.modify);
-								if(dom.attr("type") == "formula")
+								if(dom.attr("type") == "formula" && param.funcable)
 									dom.attr("formula",dom.text());
 								text.attr("b","b").val(arr.modify).attr("b",null);
 							},
 							redo:function(){ 
 								dom.find("pre").text(arr.text).find("input").val(arr.text);
-								if(dom.attr("type") == "formula")
+								if(dom.attr("type") == "formula" && param.funcable)
 									dom.attr("formula",dom.text());
 								text.attr("b","b").val(arr.text).attr("b",null);
 							}
@@ -395,21 +410,25 @@ function _to_sheet(_dom,_param){
 				}
 			});
 			
+			fontsize.val(dom.css("font-size").split("px")[0]);
+			font.val(dom.css("font-family"));
 		}
 		
 		$.each(that.selection.dom,function(idx,dom){
 			dom.addClass("sheet_select");
 		});
 		
+		
 	}
 	
 	//注册有关事件
 	var reg = function(cell){
-		if(cell.attr("col") == "0" && cell.attr("row") == "0")
+		if(cell.attr("col") == "0" && cell.attr("row") == "0"){
 			cell.attr("meta","meta").click(function(){
 				that.selectAll();
 			}).text("全选");//.width(85).height(23);
-		
+			return;
+		}
 		cell.mousedown(function(e){
 			var target = $(e.target);
 			if(e.which == 1 && !target.is("div"))
@@ -420,15 +439,14 @@ function _to_sheet(_dom,_param){
 				_selected( target.is("pre") ? target.parent() : target,true);
 		});
 		if(cell.attr("head") == null){
-			cell.dblclick(function(){
-				if(param.readonly)
+			$("<pre></pre>").appendTo(cell);
+			cell.add(cell.find("pre")).unbind("dblclick").dblclick(function(){
+				if(param.readonly || cell.find("input").length != 0 || (cell.attr("type") == "formula" && param.funcable))
 					return;
-				if($(this).find("input").length != 0 || $(this).attr("type") == "formula")
-					return;
-				var _text = $(this).text();
-				$(this).find("pre").html("").hide();
+				var _text = cell.text();
+				cell.find("pre").html("").hide();
 				
-				$("<input type='text' class='editbox'/>").appendTo($(this)).val(_text)
+				$("<input type='text' class='editbox'/>").appendTo(cell).val(_text)
 				.css("color",cell.hexColor('color')).css("font-size",cell.css("font-size")).css("font-family",cell.css("font-family"))
 				.focus().focus()
 				.on('input propertychange',function(){
@@ -447,13 +465,13 @@ function _to_sheet(_dom,_param){
 							text:_text,
 							undo:function(){
 								cell.find("pre").text(arr.modify).parent().find("input").attr("c","c").val(arr.modify);
-								if(cell.attr("type") == "formula")
+								if(cell.attr("type") == "formula" && param.funcable)
 									cell.attr("formula",arr.modify);
 								text.attr("c","c").val(arr.modify);
 							},
 							redo:function(){ 
 								cell.find("pre").text(arr.text).parent().find("input").attr("c","c").val(arr.text);
-								if(cell.attr("type") == "formula")
+								if(cell.attr("type") == "formula" && param.funcable)
 									cell.attr("formula",arr.text);
 								text.attr("c","c").val(arr.text);
 							}
@@ -473,11 +491,21 @@ function _to_sheet(_dom,_param){
 				});
 				text.attr("c","c");
 			});
-			$("<pre></pre>").appendTo(cell);
 		}else{
-			if(cell.attr("col") == 0){
-				$("<div></div>").appendTo(cell).addClass("sheet_left_split").mousedown(function(e){
-					_offy = e.pageY;
+			var isCol = cell.attr("col") == 0;
+			cell.dblclick(function(){
+				var result = prompt("请输入"+(isCol?"列高":"行宽"),isCol?cell.height():cell.width());
+				if(result){
+					if(!isCol) cell.width(0); else cell.height(0);
+					cell.find("div").trigger("mousedown",{pageY:cell.height(),pageX:cell.width()});
+					mask.trigger("mousemove",{pageY:parseInt(result),pageX:parseInt(result)});
+					mask.mouseup();
+				}
+			});
+			
+			if(isCol){
+				$("<div></div>").appendTo(cell).addClass("sheet_left_split").mousedown(function(e,cobj){
+					_offy = (typeof(cobj) == "undefined") ? e.pageY : cobj.pageY;
 					_drag = cell;
 					mask.show();
 					var mtodo = {
@@ -499,8 +527,8 @@ function _to_sheet(_dom,_param){
 					return false;
 				});
 			}else{
-				$("<div></div>").appendTo(cell).addClass("sheet_head_split").mousedown(function(e){
-					_offx = e.pageX;
+				$("<div></div>").appendTo(cell).addClass("sheet_head_split").mousedown(function(e,cobj){
+					_offx = (typeof(cobj) == "undefined") ? e.pageX : cobj.pageX;
 					_drag = cell;
 					mask.show();
 					var mtodo = {
@@ -641,7 +669,7 @@ function _to_sheet(_dom,_param){
 				dom.addClass("sheet_content_align_"+style.align);
 				dom.addClass("sheet_content_valign_"+style.valign);
 				dom.attr("type",style.type);
-				if(style.type == "formula")
+				if(style.type == "formula" && param.funcable)
 					dom.attr("formula",dom.text());
 				if(style.borderLeft != 0) _border(dom,"sheet_content_border_left");
 				if(style.borderRight != 0) _border(dom,"sheet_content_border_right");
@@ -664,7 +692,7 @@ function _to_sheet(_dom,_param){
 			var startDom = that.table.find("td[row='"+(merge.startRow+1)+"'][col='"+(merge.startCol+1)+"']");
 			var endDom = that.table.find("td[row='"+(merge.endRow+1)+"'][col='"+(merge.endCol+1)+"']");
 			that.selection.set(startDom,endDom,false);
-			mergeButton.click();
+			mergeButton.trigger("click",true);
 		}
 		
 		var first = that.table.find("td[row='1'][col='1']");
@@ -682,8 +710,8 @@ function _to_sheet(_dom,_param){
 	});
 	
 	//合并单元格
-	mergeButton.click(function(){
-		if(param.readonly) return;
+	mergeButton.click(function(e,dirty){
+		if(param.readonly && !dirty) return;
 		var arr = that.selection.dom;
 		if(arr.length == 0)
 			return;
@@ -709,11 +737,28 @@ function _to_sheet(_dom,_param){
 		that.selection.clear();
 	});
 	
+	this.calc = function(){
+		that.table.find("td[formula]").each(function(){_calc($(this));});
+		return that;
+	};
+	this.autofunc = function(bo){
+		param.autofunc = bo;
+		if(bo) that.calc();
+		return that;
+	};
+	this.scrollLock = function(bo){
+		param.scrollLock = bo;
+		return that;
+	}
+	this.readonly = function(bo){
+		param.readonly = bo;
+		return that;
+	}
+	
 	//函数计算
 	var _calc = function(dom){
 		var func = dom.attr("formula");
 		var SUM = function(domSelection){
-			
 			var start,end;
 			if(domSelection.indexOf(":") > 0){
 				var split = domSelection.split(":");
@@ -722,14 +767,12 @@ function _to_sheet(_dom,_param){
 			}else{
 				start = end = that.getCell(domSelection);
 			}
-			
 			var region = that.selection.region(start,end);
 			var total = 0;
 			$.each(region.dom,function(idx,_dom){
 				if(_dom.text() != "" && !isNaN(_dom.text()))
 					total += parseFloat(_dom.text());
 			});
-			
 			return total;
 		};
 		
@@ -803,7 +846,7 @@ function _to_sheet(_dom,_param){
 				row.style.italic = $(this).hasClass("sheet_content_italic");
 				row.style.underline = $(this).hasClass("sheet_content_underline");
 				row.style.fontName = $(this).css("font-family");
-				row.style.fontSize = $(this).css("font-size");
+				row.style.fontSize = parseInt($(this).css("font-size").split("px")[0]);
 				row.style.borderLeft = $(this).hasClass("sheet_content_border_left") ? 1 : 0;
 				row.style.borderRight = $(this).hasClass("sheet_content_border_right") ? 1 : 0;
 				row.style.borderTop = $(this).hasClass("sheet_content_border_top") ? 1 : 0;
@@ -840,21 +883,23 @@ function _to_sheet(_dom,_param){
 		return that.table.find("td[row='"+DSheet.rowName(row)+"'][col='"+DSheet.colName(col)+"']");
 	};
 	
-	mask.mousemove(function(e){
+	mask.mousemove(function(e,cobj){
+		var pageY = (typeof(cobj) == "undefined") ? e.pageY : cobj.pageY;
+		var pageX = (typeof(cobj) == "undefined") ? e.pageX : cobj.pageX;
 		if(!_drag)
 			return;
 		if(_drag.attr("row") == "0"){
-			var width = _drag.width() + e.pageX - _offx;
+			var width = _drag.width() + pageX - _offx;
 			width = width <= 0 ? 1 : width;
 			mask.todo.size = width;
 			mask.todo.redo();
-			_offx = e.pageX;
+			_offx = pageX;
 		}else{
-			var height = _drag.height() + e.pageY - _offy;
+			var height = _drag.height() + pageY - _offy;
 			height = height <=0 ? 1 : height;
 			mask.todo.size = height;
 			mask.todo.redo();
-			_offy = e.pageY;
+			_offy = pageY;
 		}
 		return false;
 	}).mouseup(function(){
@@ -865,6 +910,9 @@ function _to_sheet(_dom,_param){
 	
 	//注册scroll
 	this.content.scroll(function(e){
+		leftTable.css("left",$(this).scrollLeft());
+		headTable.css("top",$(this).scrollTop());
+		if(param.readonly || param.scrollLock) return;
 		var bottom = $(this).scrollTop() - that.table.height() + $(this).height();
 		var right = that.table.width() - $(this).scrollLeft() - $(document).width();
 		//扩展行或列
@@ -872,8 +920,6 @@ function _to_sheet(_dom,_param){
 			that.row();
 		if(right < 100)
 			that.col();
-		leftTable.css("left",$(this).scrollLeft());
-		headTable.css("top",$(this).scrollTop());
 	});
 	
 	if(typeof(param.height) == "undefined") param.height = "auto";
@@ -904,6 +950,10 @@ function _to_sheet(_dom,_param){
 			return that.undo();
 		if(e.ctrlKey && e.keyCode == 89) //ctrl+Y
 			return that.redo();
+		if(e.ctrlKey && e.keyCode == 66) //ctrl+B
+			bOption.parent().prev().click();
+		if(e.ctrlKey && e.keyCode == 73) //ctrl+I
+			iOption.parent().prev().click();
 		return true;
 	}).keyup(function(e){
 		ctrl = e.ctrlKey;
@@ -933,8 +983,41 @@ function _to_sheet(_dom,_param){
 	that.dom.find(".sheet_text_color").appendTo(that.dom.find(".sheet_color_selector[for='fg']").next());
 	that.dom.find(".sheet_bg_color").appendTo(that.dom.find(".sheet_color_selector[for='bg']").next());
 	
+	var toolbar = this.dom.find(".toolbar");
+	toolbar.toggle(!param.hideToolbar);
+	if(param.hideToolbar)
+		toolbar.parents("tr").height(0);
+	
+	toolbar.find("span[toggle]").each(function(){
+		var that = $(this);
+		var toggle = toolbar.find("."+that.attr("toggle"));
+		toggle.parent().add($(that)).hover(function(){
+			that.show().css("left",toggle.offset().left).css("top",toggle.offset().top+toggle.height());
+		},function(){
+			that.hide();
+		});
+		that.hide();
+	});
+	
 	if(typeof(param.content) != "undefined")
 		this.read(param.content);
+	
+	var numC = function(dom,count){
+		if(isNaN(dom.val()))
+			dom.val(0);
+		dom.val(parseInt(dom.val())+count);
+	};
+	
+	
+	fontsize.each(function(){
+		var that = $(this);
+		$("<div class='numsp'><div class='numup'></div><div class='numdown'></div></div>").insertAfter($(this)).children().each(function(idx,dom){
+			$(dom).click(function(){
+				numC(that,idx == 0 ? 1 : -1);
+				that.change();
+			});
+		});
+	});
 	
 	this.selection.clear(false);
 	
@@ -991,15 +1074,36 @@ var DSheet = {
 		<li><label><input type="checkbox" class="sheet_italic" bg="<%=path%>/image/i.png"/>斜体</label></li>\
 		<li><label><input type="checkbox" class="sheet_underline" bg="<%=path%>/image/u.png"/>下划线</label></li>\
 		<li class="split"></li>\
+		<li><input type="text" class="sheet_font_size"/></li>\
+		<li class="split"></li>\
+		<select class="sheet_font">\
+		<option value="微软雅黑">微软雅黑</option>\
+		<option value="宋体">宋体</option>\
+		<option value="黑体">黑体</option>\
+		<option value="隶书">隶书</option>\
+		<option value="Arial">Arial</option>\
+		<option value="Calibri">Calibri</option>\
+		</select>\
+		<li class="split"></li>\
 		<li><img src="<%=path%>/image/undo.png" class="sheet_undo" title="撤销"/></li>\
 		<li><img src="<%=path%>/image/redo.png" class="sheet_redo" title="重做"/></li>\
 		<li class="split"></li>\
+		<li><img src="<%=path%>/image/ac.png" class="sheet_align" title="对齐选项"/></li>\
+		<span toggle="sheet_align">\
 		<li><img src="<%=path%>/image/al.png" class="sheet_align_left" title="水平左对齐"/></li>\
 		<li><img src="<%=path%>/image/ac.png" class="sheet_align_center" title="水平居中对齐"/></li>\
 		<li><img src="<%=path%>/image/ar.png" class="sheet_align_right" title="水平右对齐"/></li>\
 		<li><img src="<%=path%>/image/vt.png" class="sheet_valign_top" title="垂直上方对齐"/></li>\
 		<li><img src="<%=path%>/image/vc.png" class="sheet_valign_center" title="垂直居中对齐"/></li>\
 		<li><img src="<%=path%>/image/vb.png" class="sheet_valign_bottom" title="垂直下方对齐"/></li>\
+		</span>\
+		<li><img src="<%=path%>/image/border.png" class="sheet_border" title="边框样式"/></li>\
+		<span toggle="sheet_border">\
+		<li><img src="<%=path%>/image/bl.png" class="sheet_border_left" title="左边框"/></li>\
+		<li><img src="<%=path%>/image/bt.png" class="sheet_border_top" title="上边框"/></li>\
+		<li><img src="<%=path%>/image/br.png" class="sheet_border_right" title="右边框"/></li>\
+		<li><img src="<%=path%>/image/bb.png" class="sheet_border_bottom" title="底边框"/></li>\
+		</span>\
 		<li class="split"></li>\
 		<li><img src="<%=path%>/image/cf.png" class="sheet_clear_style" title="删除样式"/></li>\
 		<li><img src="<%=path%>/image/del.png" class="sheet_remove_dom" title="删除"/></li>\
@@ -1008,11 +1112,6 @@ var DSheet = {
 		<li><input type="text" class="sheet_color_selector" for="bg"></div><div class="sheet_color sheet_bg_color" title="文字颜色"><div class="sheet_color_view"></div></div></li>\
 		<li class="split"></li>\
 		<li><img src="<%=path%>/image/merge.png" class="sheet_merge" title="合并单元格"/></li>\
-		<li class="split"></li>\
-		<li><img src="<%=path%>/image/bl.png" class="sheet_border_left" title="左边框"/></li>\
-		<li><img src="<%=path%>/image/bt.png" class="sheet_border_top" title="上边框"/></li>\
-		<li><img src="<%=path%>/image/br.png" class="sheet_border_right" title="右边框"/></li>\
-		<li><img src="<%=path%>/image/bb.png" class="sheet_border_bottom" title="底边框"/></li>\
 		</ul>\
 		</td>\
 		</tr>\
