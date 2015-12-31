@@ -1052,7 +1052,7 @@ function _to_sheet(_dom,_param){
 		});
 	});
 	
-	this.dom.find(".sheet_size").parent().toggle(param.sizeEditor);
+	var sheetSize = this.dom.find(".sheet_size").parent().toggle(param.sizeEditor).end();
 	
 	this.selection.clear(false);
 	
@@ -1073,21 +1073,22 @@ function _to_sheet(_dom,_param){
 			that.remove();
 		if($(this).hasClass("sheet_popup_clear"))
 			that.clearStyle();
-		if($(this).hasClass("sheet_popup_height") || $(this).hasClass("sheet_popup_width"))
+		if($(this).hasClass("sheet_popup_size"))
 			that.dom.find("span[toggle='sheet_size']").show().attr("c","c").css({top:e.clientY-80,left:e.clientX-50});
-		
+		if($(this).hasClass("sheet_popup_merge"))
+			that.merge();
 		popup.add(mask).hide();
 	});
+	
+	this.merge = function(){mergeButton.click();};
 	
 	if(param.unfold != "none"){
 		var unfold = param.unfold.split(" ");
 		if(param.unfold == "all") unfold = ["size","align","border"];
 		$.each(unfold,function(idx,obj){
 			var togcls = "sheet_"+obj;
-			var tog = that.dom.find("span[toggle='"+togcls+"']");
 			that.dom.find("img."+togcls).parent().remove();
-			tog.children().insertBefore(tog).css("color","white");
-			tog.remove();
+			that.dom.find("span[toggle='"+togcls+"']").children().unwrap().css("color","white");
 		});
 	}
 	
@@ -1199,17 +1200,17 @@ var DSheet = {
 		</div>\
 		<div class="sheet_drag_mask"></div>\
 		<div class="sheet_popup">\
-		<p class="sheet_popup_cut">剪切</p>\
-		<p class="sheet_popup_copy">复制</p>\
-		<p class="sheet_popup_paste">粘贴</p>\
-		<hr/>\
+		<p class="sheet_popup_cut negative">剪切</p>\
+		<p class="sheet_popup_copy negative">复制</p>\
+		<p class="sheet_popup_paste negative">粘贴</p>\
+		<hr class="negative"/>\
 		<p class="sheet_popup_delete">删除</p>\
 		<p class="sheet_popup_clear">清除样式</p>\
+		<p class="sheet_popup_merge">合并单元格</p>\
 		<hr/>\
 		<p class="sheet_popup_selectall">全选</p>\
 		<hr/>\
-		<p class="sheet_popup_height">设置行高</p>\
-		<p class="sheet_popup_width">设置列宽</p>\
+		<p class="sheet_popup_size">设置尺寸</p>\
 		</div>\
 		</td>\
 		</tr>\

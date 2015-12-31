@@ -22,6 +22,9 @@ html,body{
 	width:50px;
 	height:20px;
 }
+.sheet_popup .negative{
+	display:none;
+}
 .toolbar li.split{
 	background-image:url('image/split.jpg');
 	margin:0px 2px;
@@ -286,7 +289,7 @@ html,body{
 	height:25px;
 	display:inline-block;
 	border-bottom:1px solid #666;
-	background-image: url(../image/global/tbg.png);
+	background-color:#fff;
 }
 .numsp div{
 	height:12px;
