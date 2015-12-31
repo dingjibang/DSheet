@@ -239,12 +239,12 @@ function _to_sheet(_dom,_param){
 	var doarr = [];
 	var dopoint = 0;
 	
-	this.dom.find(".sheet_undo").click(function(){
+	var undoButton = this.dom.find(".sheet_undo").click(function(){
 		if(param.readonly) return;
 		that.undo();
 	});
 	
-	this.dom.find(".sheet_redo").click(function(){
+	var redoButton = this.dom.find(".sheet_redo").click(function(){
 		if(param.readonly) return;
 		that.redo();
 	});
@@ -253,6 +253,7 @@ function _to_sheet(_dom,_param){
 		if(dopoint > 0){
 			doarr[--dopoint].undo();
 		}
+		dotest();
 		return false;
 	};
 	
@@ -260,6 +261,7 @@ function _to_sheet(_dom,_param){
 		if(dopoint < doarr.length){
 			doarr[dopoint++].redo();
 		}
+		dotest();
 		return false;
 	};
 	
@@ -268,7 +270,25 @@ function _to_sheet(_dom,_param){
 			doarr.splice(dopoint);
 		doarr.push(arr);
 		dopoint = doarr.length;
+		dotest();
 		return arr;
+	};
+	
+	//好丑！
+	var dotest = function(){
+		if(dopoint < doarr.length){
+			redoButton[0].src = redoButton[0].src.replace("redo_disable","redo");
+		}else{
+			if(redoButton[0].src.indexOf("_disable") < 0)
+				redoButton[0].src = redoButton[0].src.replace("redo","redo_disable");
+		}
+		
+		if(dopoint > 0){
+			undoButton[0].src = undoButton[0].src.replace("undo_disable","undo");
+		}else{
+			if(undoButton[0].src.indexOf("_disable") < 0)
+				undoButton[0].src = undoButton[0].src.replace("undo","undo_disable");
+		}
 	};
 	
 	//选区
@@ -1154,8 +1174,8 @@ var DSheet = {
 		<option value="Calibri">Calibri</option>\
 		</select>\
 		<li class="split"></li>\
-		<li><img src="<%=path%>/image/undo.png" class="sheet_undo" title="撤销"/></li>\
-		<li><img src="<%=path%>/image/redo.png" class="sheet_redo" title="重做"/></li>\
+		<li><img src="<%=path%>/image/undo_disable.png" class="sheet_undo" title="撤销"/></li>\
+		<li><img src="<%=path%>/image/redo_disable.png" class="sheet_redo" title="重做"/></li>\
 		<li class="split"></li>\
 		<li><img src="<%=path%>/image/ac.png" class="sheet_align" title="对齐选项"/></li>\
 		<span toggle="sheet_align">\
