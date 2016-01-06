@@ -111,11 +111,14 @@ html,body{
 	padding:2px;
 }
 .editbox{
-	width:95%;
-	height:95%;
+	width:97%;
+	height:97%;
 	outline:none;
 	border:0;
 	background-color: transparent;
+	vertical-align:inherit;
+	text-align:inherit;
+	
 	margin:0;
 	padding:0;
 }

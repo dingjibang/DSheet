@@ -416,7 +416,7 @@ function _to_sheet(_dom,_param){
 				dom.find("pre").text(dom.attr("formula"));
 			}
 			
-			text.focus().unbind("input propertychange").val(dom.text()).attr("unmodify",dom.text()).on('input propertychange',function(){
+			text.focus().attr("c",null).unbind("input propertychange").val(dom.text()).attr("unmodify",dom.text()).on('input propertychange',function(){
 				if(typeof(window.event) != "undefined" && typeof(window.event.propertyName) != "undefined" && window.event.propertyName != "value")
 					return;
 				if($(this).attr("b") != null)
