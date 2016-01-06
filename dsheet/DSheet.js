@@ -341,7 +341,7 @@ function _to_sheet(_dom,_param){
 		region.y1 = y1;
 		region.y2 = y2;
 		return region;
-	}
+	};
 	
 	this.selection.set = function(startDom,endDom,dirty){
 		var selection = that.selection;
@@ -438,20 +438,21 @@ function _to_sheet(_dom,_param){
 									dom.attr("formula",dom.text());
 								text.attr("b","b").val(arr.modify).attr("b",null);
 							},
-							redo:function(){ 
-								dom.find("pre").text(arr.text).find("input").val(arr.text);
+							redo:function(dirty){ 
+									dom.find("pre").text(arr.text).find("input").val(arr.text);
 								if(dom.attr("type") == "formula" && param.funcable)
 									dom.attr("formula",dom.text());
-								text.attr("b","b").val(arr.text).attr("b",null);
+								if(typeof(dirty) == "undefined" || !dirty)
+									text.attr("b","b").val(arr.text).attr("b",null);
 							}
 						});
 						
 						dom.todo = todo(arr);
-						arr.redo();
+						arr.redo(true);
 					}else{
 						if(typeof(dom.todo) != "undefined"){
 							dom.todo.text = $(this).val(); 
-							dom.todo.redo();
+							dom.todo.redo(true);
 						}
 					}
 				}
@@ -494,17 +495,15 @@ function _to_sheet(_dom,_param){
 					return;
 				var _text = cell.text();
 				cell.find("pre").html("").hide();
-				
-				$("<input type='text' class='editbox'/>").appendTo(cell).val(_text)
+				var blur = ie8;
+				$("<input type='text' class='editbox'/>").appendTo(cell).unbind().focus().val(_text).blur().focus()//这里持续的blur和focus是为了解决傻逼IE8不响应propertychange的bug
 				.css("color",cell.hexColor('color')).css("font-size",cell.css("font-size")).css("font-family",cell.css("font-family"))
-				.focus().focus()
 				.on('input propertychange',function(){
 					if(typeof(window.event) != "undefined" && typeof(window.event.propertyName) != "undefined" && window.event.propertyName != "value")
 						return;
-					text.val($(this).val()).attr("c","c");
+					text.val($(this).val()).attr("c",null);
 					if($(this).attr("c") != null){
-						$(this).attr("c",null);
-						return;
+						$(this).attr("c",null);return;
 					}
 					var _text = $(this).val();
 					var modify = text.attr("unmodify");
@@ -518,27 +517,29 @@ function _to_sheet(_dom,_param){
 									cell.attr("formula",arr.modify);
 								text.attr("c","c").val(arr.modify);
 							},
-							redo:function(){ 
-								cell.find("pre").text(arr.text).parent().find("input").attr("c","c").val(arr.text);
+							redo:function(dirty){
+								if(typeof(dirty) == "undefined" || !dirty)
+									cell.find("pre").text(arr.text).parent().find("input").attr("c","c").val(arr.text);
 								if(cell.attr("type") == "formula" && param.funcable)
 									cell.attr("formula",arr.text);
 								text.attr("c","c").val(arr.text);
 							}
 						};
 						cell.todo = todo(arr);
-						arr.redo();
+						arr.redo(true);
 					}else{
 						if(typeof(cell.todo) != "undefined"){
 							cell.todo.text = text.val();
-							cell.todo.text.redo();
+							cell.todo.redo(true);
 						}
 					}
 				})
 				.blur(function(){
+					if(blur){blur = false;return;}//使用一个flag来在初始化input时，防止因为修复IE8的blur而导致删除自身
+					
 					cell.find("pre").text($(this).val()).show();
 					$(this).remove();
 				});
-				text.attr("c","c");
 			});
 		}else{
 			var isCol = cell.attr("col") == 0;
@@ -794,11 +795,11 @@ function _to_sheet(_dom,_param){
 	this.scrollLock = function(bo){
 		param.scrollLock = bo;
 		return that;
-	}
+	};
 	this.readonly = function(bo){
 		param.readonly = bo;
 		return that;
-	}
+	};
 	
 	//函数计算
 	var _calc = function(dom){
